@@ -5,6 +5,8 @@ import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.widget.Button
 import android.widget.EditText
@@ -18,6 +20,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
 
     private var pendingLoginToken: String? = null
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val statusRefresh = object : Runnable {
+        override fun run() {
+            updateStatus()
+            handler.postDelayed(this, 1500)
+        }
+    }
 
     private val mediaProjectionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -56,10 +66,20 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateStatus()
+        handler.postDelayed(statusRefresh, 1500)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        handler.removeCallbacks(statusRefresh)
     }
 
     private fun updateStatus() {
-        statusText.text = if (ControlService.running) "已连接，正在被控制" else "未连接"
+        statusText.text = when {
+            ControlService.running -> "✅ 已连接，正在被控制"
+            ControlService.connected -> "✅ 已连接，等待电脑控制\n（打开电脑端就能看到这台手机）"
+            else -> "未连接"
+        }
     }
 
     private fun doLogin() {

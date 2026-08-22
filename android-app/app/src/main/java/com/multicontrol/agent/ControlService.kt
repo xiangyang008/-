@@ -22,6 +22,9 @@ class ControlService : Service() {
         private const val NOTIFICATION_ID = 1
         var running = false
             private set
+        /** 已连上服务器（设备已上线），不等同于正在推流 */
+        var connected = false
+            private set
     }
 
     private var screenCapture: ScreenCapture? = null
@@ -73,6 +76,9 @@ class ControlService : Service() {
 
         client.start(loginToken, deviceId, screenW, screenH, videoW, videoH) { type, msg ->
             when (type) {
+                "registered" -> {
+                    connected = true
+                }
                 "start" -> {
                     running = true
                     screenCapture?.start()
@@ -125,6 +131,7 @@ class ControlService : Service() {
 
     override fun onDestroy() {
         running = false
+        connected = false
         screenCapture?.stop()
         netClient?.disconnect()
         super.onDestroy()
