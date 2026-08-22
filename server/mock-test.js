@@ -1,58 +1,62 @@
-// 服务器冒烟测试：客户端先认证，再让设备上线，验证完整消息路由
-// 用法：先启动 index.js，再运行 node mock-test.js
+// 服务器冒烟测试：注册 → 登录 → 设备上线（带 token）→ 客户端控制
 import { WebSocket } from 'ws'
 
 const URL = 'ws://127.0.0.1:8080'
 const TOKEN = 'multicontrol'
-const results = { deviceJoined: false, authed: false, listOk: false, startOk: false, frameOk: false, controlOk: false }
+const results = {
+  registered: false,
+  loggedIn: false,
+  deviceOnline: false,
+  clientAuthed: false,
+  startOk: false,
+  frameOk: false,
+  controlOk: false
+}
 
-let device
+// 1. 注册（临时连接）
+function registerUser() {
+  const ws = new WebSocket(URL)
+  ws.on('open', () => {
+    ws.send(JSON.stringify({ type: 'register-user', username: 'testuser', password: 'testpass' }))
+  })
+  ws.on('message', (data) => {
+    const msg = JSON.parse(data.toString())
+    if (msg.type === 'register-user-ok') {
+      results.registered = true
+      console.log('[注册] 成功')
+      login()
+    }
+    ws.close()
+  })
+}
 
-// 客户端（电脑）先连接
-const client = new WebSocket(URL)
-client.on('open', () => {
-  console.log('[客户端] 已连接，发送 auth')
-  client.send(JSON.stringify({ type: 'auth', token: TOKEN }))
-})
-client.on('message', (data, isBinary) => {
-  if (isBinary) {
-    results.frameOk = true
-    console.log('[客户端] 收到视频帧，长度', data.length)
-    return
-  }
-  const msg = JSON.parse(data.toString())
-  console.log('[客户端] 收到:', msg.type)
-  if (msg.type === 'authed') {
-    results.authed = true
-    createDevice() // 认证通过后再让设备上线
-  }
-  if (msg.type === 'devices' && msg.devices.length === 1) results.listOk = true
-  if (msg.type === 'device-joined') {
-    results.deviceJoined = true
-    client.send(JSON.stringify({ type: 'list' })) // 设备上线后再查一次，此时列表应含 1 台
-    client.send(JSON.stringify({ type: 'subscribe', deviceId: 'phone-001' }))
-    setTimeout(() => {
-      client.send(
-        JSON.stringify({
-          type: 'control',
-          deviceId: 'phone-001',
-          msg: { type: 'touch', action: 0, x: 0.5, y: 0.5 }
-        })
-      )
-    }, 600)
-  }
-})
+// 2. 登录（临时连接）
+function login() {
+  const ws = new WebSocket(URL)
+  ws.on('open', () => {
+    ws.send(JSON.stringify({ type: 'login', username: 'testuser', password: 'testpass' }))
+  })
+  ws.on('message', (data) => {
+    const msg = JSON.parse(data.toString())
+    if (msg.type === 'login-ok') {
+      results.loggedIn = true
+      console.log('[登录] 成功，token:', msg.token.slice(0, 8) + '...')
+      deviceOnline(msg.token)
+    }
+    ws.close()
+  })
+}
 
-function createDevice() {
-  device = new WebSocket(URL)
-  device.on('open', () => {
-    console.log('[设备] 已连接，发送 register')
-    device.send(
+// 3. 设备上线（长连接，带 token）
+function deviceOnline(loginToken) {
+  const ws = new WebSocket(URL)
+  ws.on('open', () => {
+    ws.send(
       JSON.stringify({
         type: 'register',
         deviceId: 'phone-001',
         name: '测试手机',
-        token: TOKEN,
+        loginToken,
         screenW: 1080,
         screenH: 2400,
         videoW: 720,
@@ -60,35 +64,74 @@ function createDevice() {
       })
     )
   })
-  device.on('message', (data, isBinary) => {
+  ws.on('message', (data, isBinary) => {
     if (isBinary) return
     const msg = JSON.parse(data.toString())
-    console.log('[设备] 收到:', msg.type)
+    if (msg.type === 'registered') {
+      results.deviceOnline = true
+      console.log('[设备] 上线成功')
+      clientAuth()
+    }
     if (msg.type === 'start') {
       results.startOk = true
-      console.log('[设备] 收到 start，开始推流（3 帧）')
+      console.log('[设备] 收到 start，推流 3 帧')
       for (let i = 0; i < 3; i++) {
         const flags = Buffer.from([i === 0 ? 1 : 0])
         const payload = Buffer.from([0, 0, 0, 1, 0x65, i, 0x10, 0x20])
-        device.send(Buffer.concat([flags, payload]), { binary: true })
+        ws.send(Buffer.concat([flags, payload]), { binary: true })
       }
     }
     if (msg.type === 'touch') {
       results.controlOk = true
-      console.log('[设备] 收到触摸指令:', msg.action, msg.x, msg.y)
+      console.log('[设备] 收到触摸指令')
     }
   })
 }
 
+// 4. 客户端（电脑）认证 + 订阅 + 控制
+function clientAuth() {
+  const ws = new WebSocket(URL)
+  ws.on('open', () => {
+    ws.send(JSON.stringify({ type: 'auth', token: TOKEN }))
+  })
+  ws.on('message', (data, isBinary) => {
+    if (isBinary) {
+      results.frameOk = true
+      return
+    }
+    const msg = JSON.parse(data.toString())
+    if (msg.type === 'authed') {
+      results.clientAuthed = true
+      console.log('[客户端] 认证成功')
+    }
+    if (msg.type === 'devices' && msg.devices.length === 1) {
+      console.log('[客户端] 设备列表:', msg.devices[0].deviceId, '归属', msg.devices[0].username)
+      ws.send(JSON.stringify({ type: 'subscribe', deviceId: 'phone-001' }))
+      setTimeout(() => {
+        ws.send(
+          JSON.stringify({
+            type: 'control',
+            deviceId: 'phone-001',
+            msg: { type: 'touch', action: 0, x: 0.5, y: 0.5 }
+          })
+        )
+      }, 800)
+    }
+  })
+}
+
+registerUser()
+
 setTimeout(() => {
   console.log('\n=== 测试结果 ===')
-  console.log('设备上线广播   :', results.deviceJoined ? '✅' : '❌')
-  console.log('客户端认证     :', results.authed ? '✅' : '❌')
-  console.log('设备列表下发   :', results.listOk ? '✅' : '❌')
-  console.log('订阅→设备启推  :', results.startOk ? '✅' : '❌')
-  console.log('视频帧转发     :', results.frameOk ? '✅' : '❌')
-  console.log('控制指令路由   :', results.controlOk ? '✅' : '❌')
+  console.log('用户注册   :', results.registered ? '✅' : '❌')
+  console.log('用户登录   :', results.loggedIn ? '✅' : '❌')
+  console.log('设备上线   :', results.deviceOnline ? '✅' : '❌')
+  console.log('客户端认证 :', results.clientAuthed ? '✅' : '❌')
+  console.log('订阅启推   :', results.startOk ? '✅' : '❌')
+  console.log('视频转发   :', results.frameOk ? '✅' : '❌')
+  console.log('控制路由   :', results.controlOk ? '✅' : '❌')
   const allOk = Object.values(results).every(Boolean)
   console.log(allOk ? '\n🎉 全部通过' : '\n❌ 有未通过项')
   process.exit(allOk ? 0 : 1)
-}, 3500)
+}, 4000)

@@ -3,56 +3,59 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:gravity="center_horizontal">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="多控助手"
-        android:textSize="24sp"
+        android:textSize="26sp"
         android:textStyle="bold"
-        android:layout_marginBottom="24dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="服务器地址（IP:端口）"
-        android:textSize="14sp" />
+        android:layout_marginTop="48dp"
+        android:layout_marginBottom="40dp" />
 
     <EditText
-        android:id="@+id/hostInput"
+        android:id="@+id/usernameInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="例如 1.2.3.4:8080"
+        android:hint="用户名"
         android:inputType="text"
         android:layout_marginBottom="12dp" />
 
     <EditText
-        android:id="@+id/tokenInput"
+        android:id="@+id/passwordInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="token（默认 multicontrol）"
-        android:inputType="text"
-        android:layout_marginBottom="24dp" />
+        android:hint="密码"
+        android:inputType="textPassword"
+        android:layout_marginBottom="32dp" />
 
     <Button
-        android:id="@+id/startButton"
+        android:id="@+id/loginButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="启动服务"
+        android:text="登录"
         android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/registerButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="注册新账号"
+        android:layout_marginBottom="24dp" />
 
     <Button
         android:id="@+id/accessibilityButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="开启无障碍权限"
+        android:text="开启无障碍权限（必须）"
         android:layout_marginBottom="24dp" />
 
     <TextView
         android:id="@+id/statusText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="状态：未启动"
+        android:text="未连接"
         android:textSize="16sp" />
 </LinearLayout>

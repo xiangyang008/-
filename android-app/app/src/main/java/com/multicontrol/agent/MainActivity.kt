@@ -13,16 +13,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var hostInput: EditText
-    private lateinit var tokenInput: EditText
+    private lateinit var usernameInput: EditText
+    private lateinit var passwordInput: EditText
     private lateinit var statusText: TextView
 
-    // 用 Activity Result API 请求录屏权限（替代已废弃的 onActivityResult）
+    private var pendingLoginToken: String? = null
+
     private val mediaProjectionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == RESULT_OK && result.data != null) {
-            startService(result.resultCode, result.data!!)
+        if (result.resultCode == RESULT_OK && result.data != null && pendingLoginToken != null) {
+            startService(result.resultCode, result.data!!, pendingLoginToken!!)
         } else {
             statusText.text = "已取消录屏授权"
         }
@@ -32,28 +33,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        hostInput = findViewById(R.id.hostInput)
-        tokenInput = findViewById(R.id.tokenInput)
+        usernameInput = findViewById(R.id.usernameInput)
+        passwordInput = findViewById(R.id.passwordInput)
         statusText = findViewById(R.id.statusText)
-        val startButton = findViewById<Button>(R.id.startButton)
+        val loginButton = findViewById<Button>(R.id.loginButton)
+        val registerButton = findViewById<Button>(R.id.registerButton)
         val accessibilityButton = findViewById<Button>(R.id.accessibilityButton)
 
-        // 恢复上次填写的服务器地址与 token
+        // 恢复上次登录的用户名
         val prefs = getSharedPreferences("config", Context.MODE_PRIVATE)
-        hostInput.setText(prefs.getString("host", ""))
-        tokenInput.setText(prefs.getString("token", "multicontrol"))
+        usernameInput.setText(prefs.getString("username", ""))
 
-        startButton.setOnClickListener {
-            val host = hostInput.text.toString().trim()
-            if (host.isEmpty()) {
-                statusText.text = "请先填写服务器地址"
-                return@setOnClickListener
-            }
-            val token = tokenInput.text.toString().trim().ifEmpty { "multicontrol" }
-            prefs.edit().putString("host", host).putString("token", token).apply()
-            requestMediaProjection()
-        }
-
+        loginButton.setOnClickListener { doLogin() }
+        registerButton.setOnClickListener { doRegister() }
         accessibilityButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
@@ -67,7 +59,51 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateStatus() {
-        statusText.text = if (ControlService.running) "状态：服务运行中" else "状态：未启动"
+        statusText.text = if (ControlService.running) "已连接，正在被控制" else "未连接"
+    }
+
+    private fun doLogin() {
+        val username = usernameInput.text.toString().trim()
+        val password = passwordInput.text.toString()
+        if (username.isEmpty() || password.isEmpty()) {
+            statusText.text = "请输入用户名和密码"
+            return
+        }
+        statusText.text = "登录中…"
+        NetClient(Config.SERVER_HOST).login(username, password) { result ->
+            when (result.optString("type")) {
+                "login-ok" -> {
+                    val token = result.optString("token")
+                    getSharedPreferences("config", Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("username", username)
+                        .putString("loginToken", token)
+                        .apply()
+                    pendingLoginToken = token
+                    statusText.text = "登录成功，请允许录屏"
+                    requestMediaProjection()
+                }
+                "login-error" -> statusText.text = result.optString("error", "登录失败")
+                else -> statusText.text = "登录失败：" + result.optString("error", "无法连接服务器")
+            }
+        }
+    }
+
+    private fun doRegister() {
+        val username = usernameInput.text.toString().trim()
+        val password = passwordInput.text.toString()
+        if (username.isEmpty() || password.isEmpty()) {
+            statusText.text = "请输入用户名和密码"
+            return
+        }
+        statusText.text = "注册中…"
+        NetClient(Config.SERVER_HOST).registerUser(username, password) { result ->
+            when (result.optString("type")) {
+                "register-user-ok" -> statusText.text = "注册成功，请点「登录」"
+                "register-user-error" -> statusText.text = result.optString("error", "注册失败")
+                else -> statusText.text = "注册失败：" + result.optString("error", "无法连接服务器")
+            }
+        }
     }
 
     private fun requestMediaProjection() {
@@ -75,19 +111,16 @@ class MainActivity : AppCompatActivity() {
         mediaProjectionLauncher.launch(mpm.createScreenCaptureIntent())
     }
 
-    private fun startService(resultCode: Int, data: Intent) {
-        val host = hostInput.text.toString().trim()
-        val token = tokenInput.text.toString().trim().ifEmpty { "multicontrol" }
+    private fun startService(resultCode: Int, data: Intent, loginToken: String) {
         val intent = Intent(this, ControlService::class.java)
         intent.putExtra("resultCode", resultCode)
         intent.putExtra("data", data)
-        intent.putExtra("host", host)
-        intent.putExtra("token", token)
+        intent.putExtra("loginToken", loginToken)
         if (Build.VERSION.SDK_INT >= 26) {
             startForegroundService(intent)
         } else {
             startService(intent)
         }
-        statusText.text = "启动中…"
+        statusText.text = "连接中…"
     }
 }

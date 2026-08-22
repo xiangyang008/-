@@ -13,6 +13,9 @@ import android.os.IBinder
 import android.util.DisplayMetrics
 import org.json.JSONObject
 
+/**
+ * 前台服务：持有 MediaProjection + MediaCodec + WebSocket，保活并总控一切。
+ */
 class ControlService : Service() {
     companion object {
         private const val CHANNEL_ID = "multicontrol"
@@ -35,14 +38,15 @@ class ControlService : Service() {
         if (intent != null && intent.hasExtra("data")) {
             val resultCode = intent.getIntExtra("resultCode", 0)
             val data: Intent? = intent.getParcelableExtra("data")
-            val host = intent.getStringExtra("host") ?: ""
-            val token = intent.getStringExtra("token") ?: "multicontrol"
-            if (data != null) startCapture(resultCode, data, host, token)
+            val loginToken = intent.getStringExtra("loginToken") ?: ""
+            if (data != null && loginToken.isNotEmpty()) {
+                startCapture(resultCode, data, loginToken)
+            }
         }
         return START_STICKY
     }
 
-    private fun startCapture(resultCode: Int, data: Intent, host: String, token: String) {
+    private fun startCapture(resultCode: Int, data: Intent, loginToken: String) {
         val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val projection = mpm.getMediaProjection(resultCode, data)
         if (projection == null) return
@@ -58,16 +62,16 @@ class ControlService : Service() {
         val videoW = Math.round(screenW * scale)
         val videoH = Math.round(screenH * scale)
 
-        val deviceId = getMyDeviceId()
+        val deviceId = getDeviceId()
 
-        val client = NetClient(host, token, deviceId, screenW, screenH, videoW, videoH)
+        val client = NetClient(Config.SERVER_HOST)
         netClient = client
 
         screenCapture = ScreenCapture(projection, videoW, videoH, metrics.densityDpi) { frame ->
             client.sendVideoFrame(frame)
         }
 
-        client.connect { type, msg ->
+        client.start(loginToken, deviceId, screenW, screenH, videoW, videoH) { type, msg ->
             when (type) {
                 "start" -> {
                     running = true
@@ -84,7 +88,6 @@ class ControlService : Service() {
         }
     }
 
-    // 调用无障碍服务的方法
     private fun injectTouch(msg: JSONObject) {
         val action = msg.optInt("action", 0)
         val x = msg.optDouble("x", 0.0).toFloat()
@@ -97,7 +100,7 @@ class ControlService : Service() {
         ControlAccessibilityService.instance?.injectKey(keyCode)
     }
 
-    private fun getMyDeviceId(): String {
+    private fun getDeviceId(): String {
         val prefs = getSharedPreferences("config", Context.MODE_PRIVATE)
         var id = prefs.getString("deviceId", null)
         if (id == null) {
