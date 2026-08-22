@@ -8,7 +8,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import okio.ByteString
+import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -67,7 +67,7 @@ class NetClient(
         })
     }
 
-    // ===== 修复：使用 toByteString() 扩展函数（Okio 2+ 兼容）=====
+    // ===== 修复：使用 toByteString() 扩展函数 =====
     fun sendVideoFrame(data: ByteArray) {
         ws?.send(data.toByteString())
     }
