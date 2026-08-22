@@ -23,7 +23,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK && result.data != null && pendingLoginToken != null) {
-            startService(result.resultCode, result.data!!, pendingLoginToken!!)
+            startControlService(result.resultCode, result.data!!, pendingLoginToken!!)
         } else {
             statusText.text = "已取消录屏授权"
         }
@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
         mediaProjectionLauncher.launch(mpm.createScreenCaptureIntent())
     }
 
-    private fun startService(resultCode: Int, data: Intent, loginToken: String) {
+    private fun startControlService(resultCode: Int, data: Intent, loginToken: String) {
         val intent = Intent(this, ControlService::class.java)
         intent.putExtra("resultCode", resultCode)
         intent.putExtra("data", data)

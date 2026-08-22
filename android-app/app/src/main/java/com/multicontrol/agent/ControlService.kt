@@ -62,7 +62,7 @@ class ControlService : Service() {
         val videoW = Math.round(screenW * scale)
         val videoH = Math.round(screenH * scale)
 
-        val deviceId = getDeviceId()
+        val deviceId = getMyDeviceId()
 
         val client = NetClient(Config.SERVER_HOST)
         netClient = client
@@ -100,7 +100,7 @@ class ControlService : Service() {
         ControlAccessibilityService.instance?.injectKey(keyCode)
     }
 
-    private fun getDeviceId(): String {
+    private fun getMyDeviceId(): String {
         val prefs = getSharedPreferences("config", Context.MODE_PRIVATE)
         var id = prefs.getString("deviceId", null)
         if (id == null) {
