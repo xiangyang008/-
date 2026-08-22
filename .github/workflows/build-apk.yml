@@ -5,6 +5,10 @@ on:
     branches: [master]
   workflow_dispatch:
 
+# 关键：声明写权限，否则 gh release 会报 403
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,12 +35,6 @@ jobs:
           build-root-directory: android-app
           cache-disabled: true
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug
-          path: android-app/app/build/outputs/apk/debug/app-debug.apk
-
       - name: Publish APK to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -44,4 +42,4 @@ jobs:
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
           gh release create latest android-app/app/build/outputs/apk/debug/app-debug.apk \
             --title "多控助手 APK" \
-            --notes "手机点开下方 app-debug.apk 即可下载安装。安装后打开 App，填服务器地址并开启无障碍权限。"
+            --notes "手机点开下方 app-debug.apk 即可下载安装。安装后打开 App 填写服务器地址、允许录屏并开启无障碍权限。"
