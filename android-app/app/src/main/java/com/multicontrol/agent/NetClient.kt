@@ -70,7 +70,7 @@ class NetClient(
         })
     }
 
-    // 修复：ByteString.Companion.of
+    // 修复：使用 ByteString.Companion.of (Android 兼容)
     fun sendVideoFrame(data: ByteArray) {
         ws?.send(ByteString.Companion.of(data, 0, data.size))
     }
