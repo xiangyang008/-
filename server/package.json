@@ -1,0 +1,14 @@
+{
+  "name": "multicontrol-server",
+  "version": "1.0.0",
+  "description": "多控台中心服务器：手机与电脑之间的 WebSocket 中继",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node mock-test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

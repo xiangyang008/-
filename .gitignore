@@ -1,0 +1,7 @@
+node_modules/
+out/
+dist/
+resources/adb/
+resources/scrcpy-server.jar
+*.log
+.DS_Store
