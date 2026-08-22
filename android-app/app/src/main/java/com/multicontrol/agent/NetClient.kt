@@ -70,7 +70,7 @@ class NetClient(
         })
     }
 
-    // ===== 修复：ByteString.of 改为 ByteString.Companion.of =====
+    // 修复：ByteString.Companion.of
     fun sendVideoFrame(data: ByteArray) {
         ws?.send(ByteString.Companion.of(data, 0, data.size))
     }

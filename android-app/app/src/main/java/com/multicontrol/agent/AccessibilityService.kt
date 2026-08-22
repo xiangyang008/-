@@ -71,3 +71,30 @@ class AccessibilityService : AccessibilityService() {
         performGlobalAction(action)
     }
 }
+    // ===== 新增：注入触摸事件 =====
+    fun injectTouch(action: Int, x: Float, y: Float) {
+        val path = android.graphics.Path()
+        path.moveTo(x, y)
+        val gestureBuilder = android.accessibilityservice.GestureDescription.Builder()
+        gestureBuilder.addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 1))
+        dispatchGesture(gestureBuilder.build(), null, null)
+    }
+
+    // ===== 新增：注入按键事件 =====
+    fun injectKey(keyCode: Int) {
+        val event = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode)
+        // 通过 AccessibilityService 注入按键（需要 API 28+）
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            val node = rootInActiveWindow
+            node?.performAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK) // 示例，实际需自定义
+            // 简单实现：发送广播或使用 InputManager，但这里仅演示，实际可能需结合其他方式
+        }
+        // 由于系统限制，简单的 KeyEvent 注入在无障碍中较复杂，可改用 shell 命令（需要 root）或 InputManager
+        // 作为临时方案，我们只实现触摸注入，按键暂不实现，或使用其它方式。
+        // 如果确实需要按键，可以考虑通过 Runtime.exec("input keyevent $keyCode")
+        try {
+            Runtime.getRuntime().exec("input keyevent $keyCode")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }

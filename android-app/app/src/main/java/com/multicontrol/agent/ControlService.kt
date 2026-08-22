@@ -63,7 +63,8 @@ class ControlService : Service() {
         val videoW = Math.round(screenW * scale)
         val videoH = Math.round(screenH * scale)
 
-        val deviceId = getDeviceId()
+        // 设备ID（使用自定义方法，不覆盖 Service 的方法）
+        val deviceId = getMyDeviceId()
 
         // 网络客户端
         val client = NetClient(host, token, deviceId, screenW, screenH, videoW, videoH)
@@ -92,6 +93,7 @@ class ControlService : Service() {
         }
     }
 
+    // 调用 AccessibilityService 的方法（需确保已开启无障碍）
     private fun injectTouch(msg: JSONObject) {
         val action = msg.optInt("action", 0)
         val x = msg.optDouble("x", 0.0).toFloat()
@@ -104,8 +106,8 @@ class ControlService : Service() {
         AccessibilityService.instance?.injectKey(keyCode)
     }
 
-    // ===== 修复：加 override 并改为 public =====
-    public override fun getDeviceId(): String {
+    // 自定义方法：获取设备ID（不覆盖父类）
+    private fun getMyDeviceId(): String {
         val prefs = getSharedPreferences("config", Context.MODE_PRIVATE)
         var id = prefs.getString("deviceId", null)
         if (id == null) {
