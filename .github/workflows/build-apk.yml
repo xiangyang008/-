@@ -29,7 +29,7 @@ jobs:
           gradle-version: 8.5
           arguments: assembleDebug
           build-root-directory: android-app
-          cache-disabled: true   # 关键：禁用缓存，绕过 GitHub 缓存服务故障
+          cache-disabled: true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
