@@ -33,6 +33,14 @@ function createWindow(): void {
     mainWindow = null
   })
 
+  // F12 打开开发者工具（方便调试视频黑屏等）
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F12') {
+      mainWindow?.webContents.toggleDevTools()
+      event.preventDefault()
+    }
+  })
+
   const devUrl = process.env['ELECTRON_RENDERER_URL']
   if (devUrl) {
     mainWindow.loadURL(devUrl)
