@@ -13,9 +13,6 @@ import android.os.IBinder
 import android.util.DisplayMetrics
 import org.json.JSONObject
 
-/**
- * 前台服务：持有 MediaProjection + MediaCodec + WebSocket，保活并总控一切。
- */
 class ControlService : Service() {
     companion object {
         private const val CHANNEL_ID = "multicontrol"
@@ -50,14 +47,12 @@ class ControlService : Service() {
         val projection = mpm.getMediaProjection(resultCode, data)
         if (projection == null) return
 
-        // 屏幕分辨率
         val metrics = DisplayMetrics()
         val dm = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
         dm.getDisplay(android.view.Display.DEFAULT_DISPLAY)?.getRealMetrics(metrics)
         val screenW = metrics.widthPixels
         val screenH = metrics.heightPixels
 
-        // 视频分辨率（长边不超过 720，保持宽高比）
         val maxSide = 720
         val scale = if (screenW > screenH) maxSide.toFloat() / screenW else maxSide.toFloat() / screenH
         val videoW = Math.round(screenW * scale)
@@ -65,16 +60,13 @@ class ControlService : Service() {
 
         val deviceId = getMyDeviceId()
 
-        // 网络客户端
         val client = NetClient(host, token, deviceId, screenW, screenH, videoW, videoH)
         netClient = client
 
-        // 屏幕采集
         screenCapture = ScreenCapture(projection, videoW, videoH, metrics.densityDpi) { frame ->
             client.sendVideoFrame(frame)
         }
 
-        // 连接服务器，收到指令后分发
         client.connect { type, msg ->
             when (type) {
                 "start" -> {
@@ -105,7 +97,6 @@ class ControlService : Service() {
         AccessibilityService.instance?.injectKey(keyCode)
     }
 
-    // 自定义方法：获取设备ID（不覆盖父类）
     private fun getMyDeviceId(): String {
         val prefs = getSharedPreferences("config", Context.MODE_PRIVATE)
         var id = prefs.getString("deviceId", null)

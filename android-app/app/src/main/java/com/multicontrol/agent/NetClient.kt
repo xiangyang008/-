@@ -12,9 +12,6 @@ import okio.ByteString
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/**
- * WebSocket 客户端：主动连接中心服务器，注册设备、发视频帧、收控制指令。
- */
 class NetClient(
     private val host: String,
     private val token: String,
@@ -56,7 +53,7 @@ class NetClient(
                     val type = msg.optString("type")
                     handler.post { onCommand?.invoke(type, msg) }
                 } catch (e: Exception) {
-                    // 忽略无法解析的消息
+                    // 忽略
                 }
             }
 
@@ -70,9 +67,9 @@ class NetClient(
         })
     }
 
-    // 修复：使用 ByteString.Companion.of (Android 兼容)
+    // ===== 修复：使用 toByteString() 扩展函数（Okio 2+ 兼容）=====
     fun sendVideoFrame(data: ByteArray) {
-        ws?.send(ByteString.Companion.of(data, 0, data.size))
+        ws?.send(data.toByteString())
     }
 
     fun disconnect() {
