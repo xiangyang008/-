@@ -1,6 +1,5 @@
 package com.multicontrol.agent
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
@@ -10,15 +9,24 @@ import android.provider.Settings
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : Activity() {
-    companion object {
-        private const val REQUEST_MEDIA_PROJECTION = 100
-    }
-
+class MainActivity : AppCompatActivity() {
     private lateinit var hostInput: EditText
     private lateinit var tokenInput: EditText
     private lateinit var statusText: TextView
+
+    // 用 Activity Result API 请求录屏权限（替代已废弃的 onActivityResult）
+    private val mediaProjectionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK && result.data != null) {
+            startService(result.resultCode, result.data!!)
+        } else {
+            statusText.text = "已取消录屏授权"
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,25 +67,12 @@ class MainActivity : Activity() {
     }
 
     private fun updateStatus() {
-        val running = ControlService.running
-        statusText.text = if (running) "状态：服务运行中" else "状态：未启动"
+        statusText.text = if (ControlService.running) "状态：服务运行中" else "状态：未启动"
     }
 
     private fun requestMediaProjection() {
         val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        startActivityForResult(mpm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_MEDIA_PROJECTION) {
-            if (resultCode == RESULT_OK && data != null) {
-                startService(resultCode, data)
-            } else {
-                statusText.text = "已取消录屏授权"
-            }
-        }
+        mediaProjectionLauncher.launch(mpm.createScreenCaptureIntent())
     }
 
     private fun startService(resultCode: Int, data: Intent) {
