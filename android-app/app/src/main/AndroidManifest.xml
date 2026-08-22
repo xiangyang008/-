@@ -27,7 +27,7 @@
             android:exported="false" />
 
         <service
-            android:name=".AccessibilityService"
+            android:name=".ControlAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false"
             android:label="@string/accessibility_label">

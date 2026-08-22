@@ -84,17 +84,17 @@ class ControlService : Service() {
         }
     }
 
-    // 调用 AccessibilityService 的方法
+    // 调用无障碍服务的方法
     private fun injectTouch(msg: JSONObject) {
         val action = msg.optInt("action", 0)
         val x = msg.optDouble("x", 0.0).toFloat()
         val y = msg.optDouble("y", 0.0).toFloat()
-        AccessibilityService.instance?.injectTouch(action, x, y)
+        ControlAccessibilityService.instance?.injectTouch(action, x, y)
     }
 
     private fun injectKey(msg: JSONObject) {
         val keyCode = msg.optInt("keyCode", 0)
-        AccessibilityService.instance?.injectKey(keyCode)
+        ControlAccessibilityService.instance?.injectKey(keyCode)
     }
 
     private fun getMyDeviceId(): String {
