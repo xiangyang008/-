@@ -104,7 +104,8 @@ class ControlService : Service() {
         AccessibilityService.instance?.injectKey(keyCode)
     }
 
-    private fun getDeviceId(): String {
+    // ===== 修复：加 override 并改为 public =====
+    public override fun getDeviceId(): String {
         val prefs = getSharedPreferences("config", Context.MODE_PRIVATE)
         var id = prefs.getString("deviceId", null)
         if (id == null) {
